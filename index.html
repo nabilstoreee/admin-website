@@ -11,6 +11,11 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="theme-color" content="#ff0050">
 
     <style>
         * { font-family: 'Inter', sans-serif; }
@@ -96,12 +101,13 @@
         .badge-dalle { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #f59e0b; }
         .badge-theresav { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
         .badge-groq { background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.4); color: #f59e0b; }
-        .badge-offline { background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #818cf8; }
 
-        .provider-dropdown { position: absolute; top: 100%; right: 0; margin-top: 8px; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 8px; min-width: 180px; z-index: 30; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .provider-dropdown { position: absolute; top: 100%; right: 0; margin-top: 8px; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 8px; min-width: 200px; z-index: 30; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
         .provider-dropdown.show { display: block; }
         .provider-option { padding: 10px 14px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; transition: all 0.2s; }
         .provider-option:hover { background: rgba(255,255,255,0.05); color: white; }
+        .provider-option.locked { opacity: 0.5; cursor: not-allowed; }
+        .provider-option.locked:hover { background: transparent; color: #cbd5e1; }
 
         .suggestion-chip { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 14px; margin: 4px; cursor: pointer; font-size: 0.85rem; color: #cbd5e1; }
         .suggestion-chip:hover { background: rgba(59,130,246,0.18); border-color: rgba(59,130,246,0.4); transform: translateY(-2px); color: white; }
@@ -122,21 +128,18 @@
         .modal .input-wrapper { position: relative; }
         .modal .toggle-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #6b7280; cursor: pointer; }
 
-        /* Progress Bar */
-        .progress-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; margin-top: 8px; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 3px; transition: width 0.3s ease; }
-        .progress-text { font-size: 0.7rem; color: #6b7280; margin-top: 4px; }
+        .vip-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; }
+        .vip-table th, .vip-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .vip-table th { color: #9ca3af; font-weight: 600; text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.05em; }
+        .vip-table .delete-vip { color: #ef4444; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+        .vip-table .delete-vip:hover { background: rgba(239,68,68,0.2); }
 
         @media (max-width: 767px) { .message-user, .message-ai { max-width: 90%; } .sidebar { width: 85vw; max-width: 300px; } }
     </style>
 </head>
 <body class="bg-grid">
 
-    <!-- Auth Screen -->
-    <div id="authScreen" class="auth-screen">
-        <div class="auth-box" id="authBox"></div>
-    </div>
-
+    <div id="authScreen" class="auth-screen"><div class="auth-box" id="authBox"></div></div>
     <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
 
     <div class="app-layout">
@@ -147,7 +150,7 @@
                 <h2><span class="gradient-text">Abil-AI Assistant</span></h2>
                 <p>Asisten AI cerdas buatan Abil</p>
             </div>
-            <button onclick="newChat(); closeSidebar();" class="sidebar-new-chat"><i class="fas fa-plus"></i> Chat Baru</button>
+            <button onclick="newChat(); closeSidebar();" class="sidebar-new-chat"><i class="fas fa-plus"></i> buat Obrolan baru</button>
             <div class="chat-list" id="chatList"><div style="text-align:center;padding:20px;color:#6b7280;font-size:0.8rem;"><i class="fas fa-inbox mb-2" style="font-size:1.5rem;display:block;"></i>Belum ada riwayat</div></div>
             <div class="sidebar-footer"><p>Abil-AI © 2025 • Dibuat oleh Abil</p></div>
         </aside>
@@ -167,32 +170,27 @@
                             </span>
                             <div id="providerDropdown" class="provider-dropdown"></div>
                         </div>
+                        <button id="vipBtn" onclick="openVipModal()" class="w-9 h-9 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center transition-all text-yellow-500 hover:text-yellow-400" title="Kelola VIP" style="display:none;"><i class="fas fa-crown"></i></button>
                         <button id="adminSettingsBtn" onclick="openSettingsModal()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all text-gray-400 hover:text-white" title="Pengaturan API" style="display:none;"><i class="fas fa-cog"></i></button>
                         <button onclick="logout()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-all text-gray-400 hover:text-white" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
                     </div>
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto px-4 py-6" id="chatContainer">
-                <div class="max-w-4xl mx-auto space-y-4" id="messagesContainer"></div>
-            </main>
+            <main class="flex-1 overflow-y-auto px-4 py-6" id="chatContainer"><div class="max-w-4xl mx-auto space-y-4" id="messagesContainer"></div></main>
 
             <footer class="glass border-t border-white/5 px-4 py-4 sticky bottom-0 z-20">
                 <div class="max-w-4xl mx-auto"><div class="relative">
                     <textarea id="userInput" class="w-full bg-[#161616] border border-white/10 rounded-2xl py-4 pl-4 pr-14 text-white placeholder-gray-600 resize-none focus:outline-none focus:border-blue-500/50 transition-all text-sm" placeholder="Ketik pesan..." rows="1" onkeydown="handleKeyDown(event)"></textarea>
                     <button onclick="sendMessage()" class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 btn-gradient rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg></button>
-                </div><p class="text-center text-[10px] text-gray-600 mt-2">Abil-AI • Dibuat oleh Abil • WebLLM Powered</p></div>
+                </div><p class="text-center text-[10px] text-gray-600 mt-2">Abil-AI • Dibuat oleh Abil</p></div>
             </footer>
         </div>
     </div>
 
-    <!-- Settings Modal -->
     <div id="settingsModal" class="modal-overlay" onclick="closeSettingsOutside(event)">
         <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h2><i class="fas fa-cog text-blue-500"></i> Pengaturan API</h2>
-                <button class="modal-close-btn" onclick="closeSettingsModal()"><i class="fas fa-times"></i></button>
-            </div>
+            <div class="modal-header"><h2><i class="fas fa-cog text-blue-500"></i> Pengaturan API</h2><button class="modal-close-btn" onclick="closeSettingsModal()"><i class="fas fa-times"></i></button></div>
             <div class="flex flex-wrap gap-2 mb-6">
                 <button onclick="switchProviderTab('openai')" id="tab-openai" class="provider-tab px-4 py-2 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-gray-400">ChatGPT</button>
                 <button onclick="switchProviderTab('gemini')" id="tab-gemini" class="provider-tab px-4 py-2 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-gray-400">Gemini</button>
@@ -203,446 +201,348 @@
                 <button onclick="switchProviderTab('groq')" id="tab-groq" class="provider-tab px-4 py-2 rounded-xl text-xs font-bold bg-white/5 border border-white/10 text-gray-400">Groq</button>
             </div>
             <div class="space-y-4">
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-key"></i> API Key <span id="providerLabel">(ChatGPT)</span></label>
-                    <div class="input-wrapper">
-                        <input type="password" id="apiKeyInput" class="form-input" placeholder="Masukkan API Key...">
-                        <button onclick="toggleApiKeyVisibility()" class="toggle-btn"><i class="fas fa-eye" id="eyeIcon"></i></button>
-                    </div>
-                </div>
-                <div class="form-group" id="chatIdGroup" style="display:none;">
-                    <label class="form-label"><i class="fas fa-comment"></i> Chat ID</label>
-                    <input type="text" id="chatIdInput" class="form-input" placeholder="Masukkan Chat ID...">
-                </div>
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-link"></i> API Endpoint</label>
-                    <input type="text" id="apiEndpoint" class="form-input" readonly style="opacity:0.7;">
-                </div>
-                <div class="form-group">
-                    <label class="form-label"><i class="fas fa-microchip"></i> Model</label>
-                    <select id="modelSelect" class="form-select"></select>
-                </div>
+                <div class="form-group"><label class="form-label"><i class="fas fa-key"></i> API Key <span id="providerLabel">(ChatGPT)</span></label><div class="input-wrapper"><input type="password" id="apiKeyInput" class="form-input" placeholder="Masukkan API Key..."><button onclick="toggleApiKeyVisibility()" class="toggle-btn"><i class="fas fa-eye" id="eyeIcon"></i></button></div></div>
+                <div class="form-group" id="chatIdGroup" style="display:none;"><label class="form-label"><i class="fas fa-comment"></i> Chat ID</label><input type="text" id="chatIdInput" class="form-input" placeholder="Masukkan Chat ID..."></div>
+                <div class="form-group"><label class="form-label"><i class="fas fa-link"></i> API Endpoint</label><input type="text" id="apiEndpoint" class="form-input" placeholder="https://api.example.com/v1/chat/completions"></div>
+                <div class="form-group"><label class="form-label"><i class="fas fa-microchip"></i> Model</label><select id="modelSelect" class="form-select"></select></div>
+                <div class="form-group"><label class="form-label"><i class="fas fa-tag"></i> Nama Tampilan</label><input type="text" id="customNameInput" class="form-input" placeholder="Nama versi (misal: Abil-Ai v5.6 pro)"></div>
                 <button onclick="saveSettings()" class="w-full btn-gradient text-white font-bold py-3.5 rounded-xl"><i class="fas fa-save mr-2"></i> Simpan</button>
                 <p id="settingsStatus" class="text-center text-xs text-gray-500 min-h-[20px]"></p>
             </div>
         </div>
     </div>
 
-    <!-- WebLLM Download Progress Modal -->
-    <div id="downloadModal" class="modal-overlay" style="z-index:160; pointer-events: none; opacity: 0;">
-        <div class="modal" style="max-width: 400px; text-align: center;">
-            <h3 class="text-white font-bold mb-3"><i class="fas fa-download text-blue-500"></i> Mendownload Model AI</h3>
-            <p class="text-gray-400 text-sm mb-4">Model AI berjalan lokal di browser Anda.<br>Download hanya sekali (1-2 GB).</p>
-            <div class="progress-bar"><div class="progress-fill" id="downloadProgressFill" style="width:0%;"></div></div>
-            <p class="progress-text" id="downloadProgressText">0%</p>
-            <p class="text-gray-500 text-[10px] mt-3" id="downloadSpeedText"></p>
+    <div id="vipModal" class="modal-overlay" onclick="closeVipOutside(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header"><h2><i class="fas fa-crown text-yellow-500"></i> Kelola Akses VIP</h2><button class="modal-close-btn" onclick="closeVipModal()"><i class="fas fa-times"></i></button></div>
+            <div class="space-y-4">
+                <div class="form-group"><label class="form-label"><i class="fas fa-envelope"></i> Email Pengguna</label><input type="email" id="vipEmailInput" class="form-input" placeholder="user@example.com"></div>
+                <div class="form-group"><label class="form-label"><i class="fas fa-microchip"></i> Provider VIP</label><select id="vipProviderSelect" class="form-select"><option value="dalle">Abil-Ai v5.6 pro (DALL-E)</option><option value="theresav">Abil-Ai v6.6 plus (Theresav)</option><option value="groq">Abil-Ai v7.5 ultra (Groq)</option></select></div>
+                <div class="form-group"><label class="form-label"><i class="fas fa-calendar"></i> Durasi (hari)</label><input type="number" id="vipDurationInput" class="form-input" value="3" min="1" max="365"></div>
+                <button onclick="addVipAccess()" class="w-full btn-gradient text-white font-bold py-3.5 rounded-xl"><i class="fas fa-plus mr-2"></i> Berikan Akses</button>
+                <div id="vipStatus" class="text-center text-xs text-gray-500 min-h-[20px]"></div>
+                <div class="border-t border-white/10 pt-4 mt-4"><h3 class="text-white font-bold text-sm mb-3">Daftar Akses VIP Aktif</h3><div id="vipListContainer" style="max-height:200px;overflow-y:auto;"><p class="text-gray-600 text-xs">Belum ada akses VIP.</p></div></div>
+            </div>
         </div>
     </div>
 
-    <!-- WebLLM Script -->
-    <script type="module">
-        import { CreateWebWorkerMLCEngine } from "https://esm.run/@mlc-ai/web-llm";
-
-        // Buat engine global
-        window.webllmEngine = null;
-        window.webllmLoading = false;
-        window.webllmModelId = "Llama-3.2-1B-Instruct-q4f16_1-MLC"; // model ringan (~1GB)
-
-        window.initWebLLM = async function(modelId) {
-            if (window.webllmLoading) return;
-            if (window.webllmEngine && window.webllmModelId === modelId) return; // sudah siap
-            
-            window.webllmLoading = true;
-            window.webllmModelId = modelId;
-            
-            // Tampilkan progress modal
-            const downloadModal = document.getElementById('downloadModal');
-            const progressFill = document.getElementById('downloadProgressFill');
-            const progressText = document.getElementById('downloadProgressText');
-            const speedText = document.getElementById('downloadSpeedText');
-            
-            downloadModal.style.opacity = '1';
-            downloadModal.style.pointerEvents = 'auto';
-            progressFill.style.width = '0%';
-            progressText.textContent = '0%';
-            speedText.textContent = 'Menyiapkan...';
-            
-            try {
-                window.webllmEngine = await CreateWebWorkerMLCEngine(
-                    new Worker(new URL("https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/lib/worker.js", import.meta.url), { type: "module" }),
-                    modelId,
-                    {
-                        initProgressCallback: (progress) => {
-                            const percent = (progress.progress * 100).toFixed(1);
-                            progressFill.style.width = percent + '%';
-                            progressText.textContent = percent + '%';
-                            if (progress.timeElapsed > 0) {
-                                const speed = (progress.loaded / progress.timeElapsed).toFixed(2);
-                                speedText.textContent = `Kecepatan: ${speed} MB/s`;
-                            }
-                        }
-                    }
-                );
-                downloadModal.style.opacity = '0';
-                downloadModal.style.pointerEvents = 'none';
-                window.webllmLoading = false;
-                showToastWebLLM('✅ Model AI siap digunakan!');
-            } catch (e) {
-                downloadModal.style.opacity = '0';
-                downloadModal.style.pointerEvents = 'none';
-                window.webllmLoading = false;
-                window.webllmEngine = null;
-                throw new Error('Gagal memuat model: ' + e.message);
-            }
-        };
-
-        // Fungsi untuk dipanggil dari script utama
-        window.getWebLLMResponse = async function(message, systemPrompt) {
-            if (!window.webllmEngine) {
-                await window.initWebLLM(window.webllmModelId);
-            }
-            const fullPrompt = `${systemPrompt}\n\nUser: ${message}\nAssistant:`;
-            const reply = await window.webllmEngine.chatCompletion([{ role: "user", content: fullPrompt }]);
-            return reply;
-        };
-
-        // Toast function (tidak bisa akses showToast dari sini)
-        function showToastWebLLM(msg) {
-            const o = document.querySelector('.toast'); if(o) o.remove();
-            const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
-            document.body.appendChild(t);
-            setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); },3000);
-        }
-    </script>
-
     <script>
-        // ========== USER SYSTEM ==========
-        const ADMIN_EMAIL = 'admin@abil.ai';
-        const ADMIN_PASSWORD = 'admin123';
-
+        const ADMIN_EMAIL = 'admin@abil.ai', ADMIN_PASSWORD = 'admin123';
         function getUsers() { return JSON.parse(localStorage.getItem('abilai_users') || '[]'); }
         function saveUsers(u) { localStorage.setItem('abilai_users', JSON.stringify(u)); }
-        function initUsers() {
-            let users = getUsers();
-            if (!users.find(u => u.email === ADMIN_EMAIL)) {
-                users.push({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD, role: 'admin' });
-                saveUsers(users);
-            }
-        }
-
+        function initUsers() { let users = getUsers(); if (!users.find(u => u.email === ADMIN_EMAIL)) { users.push({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD, role: 'admin' }); saveUsers(users); } }
         let currentUser = JSON.parse(localStorage.getItem('abilai_currentUser') || 'null');
 
         function renderAuthForm(mode = 'login') {
-            const box = document.getElementById('authBox');
-            box.innerHTML = `
-                <div class="brand-logo"><span>A</span></div>
-                <h2>Abil-AI</h2>
-                <p>${mode === 'login' ? 'Masuk ke akun Anda' : 'Daftar akun baru'}</p>
+            document.getElementById('authBox').innerHTML = `
+                <div class="brand-logo"><span>A</span></div><h2>Abil-AI</h2><p>${mode === 'login' ? 'Masuk ke akun Anda' : 'Daftar akun baru'}</p>
                 <input type="email" id="authEmail" class="auth-input" placeholder="Email">
                 <input type="password" id="authPassword" class="auth-input" placeholder="Password">
                 ${mode === 'register' ? '<input type="password" id="authConfirmPassword" class="auth-input" placeholder="Konfirmasi Password">' : ''}
-                <button onclick="${mode === 'login' ? 'login()' : 'register()'}" class="w-full btn-gradient text-white font-bold py-3.5 rounded-xl">
-                    ${mode === 'login' ? '<i class="fas fa-sign-in-alt mr-2"></i> Masuk' : '<i class="fas fa-user-plus mr-2"></i> Daftar'}
-                </button>
+                <button onclick="${mode === 'login' ? 'login()' : 'register()'}" class="w-full btn-gradient text-white font-bold py-3.5 rounded-xl">${mode === 'login' ? '<i class="fas fa-sign-in-alt mr-2"></i> Masuk' : '<i class="fas fa-user-plus mr-2"></i> Daftar'}</button>
                 <p id="authError" class="text-red-400 text-xs mt-3 min-h-[16px]"></p>
-                <p class="text-gray-500 text-xs mt-4">
-                    ${mode === 'login' ? 'Belum punya akun? <span class="auth-link" onclick="renderAuthForm(\'register\')">Daftar di sini</span>' : 'Sudah punya akun? <span class="auth-link" onclick="renderAuthForm(\'login\')">Login di sini</span>'}
-                </p>
-            `;
+                <p class="text-gray-500 text-xs mt-4">${mode === 'login' ? 'Belum punya akun? <span class="auth-link" onclick="renderAuthForm(\'register\')">Daftar di sini</span>' : 'Sudah punya akun? <span class="auth-link" onclick="renderAuthForm(\'login\')">Login di sini</span>'}</p>`;
         }
 
         function login() {
-            const email = document.getElementById('authEmail').value.trim();
-            const password = document.getElementById('authPassword').value;
-            const users = getUsers();
-            const user = users.find(u => u.email === email && u.password === password);
+            const email = document.getElementById('authEmail').value.trim(), password = document.getElementById('authPassword').value;
+            const user = getUsers().find(u => u.email === email && u.password === password);
             if (!user) { document.getElementById('authError').textContent = 'Email atau password salah!'; return; }
             currentUser = { email: user.email, role: user.role };
             localStorage.setItem('abilai_currentUser', JSON.stringify(currentUser));
-            document.getElementById('authScreen').classList.add('hidden');
-            updateUIForRole();
+            document.getElementById('authScreen').classList.add('hidden'); updateUIForRole();
             showToast(`Selamat datang, ${user.email.split('@')[0]}! 👋`);
         }
 
         function register() {
-            const email = document.getElementById('authEmail').value.trim();
-            const password = document.getElementById('authPassword').value;
-            const confirm = document.getElementById('authConfirmPassword')?.value;
+            const email = document.getElementById('authEmail').value.trim(), password = document.getElementById('authPassword').value, confirm = document.getElementById('authConfirmPassword')?.value;
             if (!email || !password) { document.getElementById('authError').textContent = 'Isi semua field!'; return; }
             if (password !== confirm) { document.getElementById('authError').textContent = 'Password tidak cocok!'; return; }
             let users = getUsers();
             if (users.find(u => u.email === email)) { document.getElementById('authError').textContent = 'Email sudah terdaftar!'; return; }
-            users.push({ email, password, role: 'user' });
-            saveUsers(users);
+            users.push({ email, password, role: 'user' }); saveUsers(users);
             currentUser = { email, role: 'user' };
             localStorage.setItem('abilai_currentUser', JSON.stringify(currentUser));
-            document.getElementById('authScreen').classList.add('hidden');
-            updateUIForRole();
+            document.getElementById('authScreen').classList.add('hidden'); updateUIForRole();
             showToast('Pendaftaran berhasil! 🎉');
         }
 
         function logout() {
-            currentUser = null;
-            localStorage.removeItem('abilai_currentUser');
-            document.getElementById('authScreen').classList.remove('hidden');
-            renderAuthForm('login');
+            currentUser = null; localStorage.removeItem('abilai_currentUser');
+            document.getElementById('authScreen').classList.remove('hidden'); renderAuthForm('login');
             document.getElementById('adminSettingsBtn').style.display = 'none';
+            document.getElementById('vipBtn').style.display = 'none';
         }
 
         function updateUIForRole() {
-            document.getElementById('adminSettingsBtn').style.display = (currentUser && currentUser.role === 'admin') ? 'flex' : 'none';
+            const isAdmin = currentUser?.role === 'admin';
+            document.getElementById('adminSettingsBtn').style.display = isAdmin ? 'flex' : 'none';
+            document.getElementById('vipBtn').style.display = isAdmin ? 'flex' : 'none';
         }
 
-        // ========== API CONFIG ==========
+        function getVipData() { return JSON.parse(localStorage.getItem('abilai_vip') || '[]'); }
+        function saveVipData(data) { localStorage.setItem('abilai_vip', JSON.stringify(data)); }
+        function addVipAccess() {
+            const email = document.getElementById('vipEmailInput').value.trim(), provider = document.getElementById('vipProviderSelect').value, days = parseInt(document.getElementById('vipDurationInput').value) || 3;
+            if (!email) { document.getElementById('vipStatus').textContent = 'Masukkan email!'; return; }
+            let vips = getVipData(); vips = vips.filter(v => !(v.email === email && v.provider === provider));
+            vips.push({ email, provider, expiry: Date.now() + (days * 86400000) }); saveVipData(vips);
+            document.getElementById('vipEmailInput').value = '';
+            document.getElementById('vipStatus').textContent = `✅ Akses ${provider} diberikan ke ${email} selama ${days} hari.`;
+            renderVipList(); showToast('Akses VIP diberikan!');
+        }
+        
+        function removeVipAccess(email, provider) {
+            let vips = getVipData(); vips = vips.filter(v => !(v.email === email && v.provider === provider));
+            saveVipData(vips); renderVipList(); showToast('Akses VIP dihapus.');
+        }
+        
+        function userHasVipAccess(email, provider) {
+            if (!email || !provider) return false;
+            if (email === ADMIN_EMAIL) return true;
+            const now = Date.now();
+            return getVipData().some(v => v.email === email && v.provider === provider && v.expiry > now);
+        }
+        
+        function renderVipList() {
+            const container = document.getElementById('vipListContainer'), vips = getVipData();
+            if (vips.length === 0) { container.innerHTML = '<p class="text-gray-600 text-xs">Belum ada akses VIP.</p>'; return; }
+            const now = Date.now();
+            let html = '<table class="vip-table"><thead><tr><th>Email</th><th>Provider</th><th>Kadaluarsa</th><th></th></tr></thead><tbody>';
+            vips.forEach(v => {
+                const expDate = new Date(v.expiry).toLocaleDateString('id-ID'), isExpired = v.expiry < now;
+                html += `<tr style="${isExpired ? 'opacity:0.4;' : ''}"><td>${escapeHtml(v.email)}</td><td>${escapeHtml(API_CONFIGS[v.provider]?.name || v.provider)}</td><td>${expDate} ${isExpired ? '(Kadaluarsa)' : ''}</td><td><span class="delete-vip" onclick="removeVipAccess('${v.email}','${v.provider}')"><i class="fas fa-trash-alt"></i></span></td></tr>`;
+            });
+            html += '</tbody></table>'; container.innerHTML = html;
+        }
+        
+        function openVipModal() { if (currentUser?.role !== 'admin') return; document.getElementById('vipModal').classList.add('active'); renderVipList(); }
+        function closeVipModal() { document.getElementById('vipModal').classList.remove('active'); }
+        function closeVipOutside(e) { if (e.target === document.getElementById('vipModal')) closeVipModal(); }
+
         const SYSTEM_PROMPT = `Kamu adalah Abil-AI, dibuat oleh Abil (Nabil Assihidiqi) dari Indonesia. JANGAN mengaku sebagai AI lain. Ramah & berbahasa Indonesia.`;
         const API_CONFIGS = {
-            openai: { name:'ChatGPT', endpoint:'https://api.openai.com/v1/chat/completions', models:['gpt-4o','gpt-4-turbo','gpt-4','gpt-3.5-turbo'], badgeClass:'badge-openai', icon:'fa-robot', needsKey:true },
-            gemini: { name:'Gemini', endpoint:'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', models:['gemini-pro','gemini-pro-vision'], badgeClass:'badge-gemini', icon:'fa-gem', needsKey:true },
-            kimi: { name:'Kimi', endpoint:'https://api.moonshot.cn/v1/chat/completions', models:['moonshot-v1-8k','moonshot-v1-32k','moonshot-v1-128k'], badgeClass:'badge-kimi', icon:'fa-moon', needsKey:true },
-            deepseek: { name:'DeepSeek', endpoint:'https://api.deepseek.com/v1/chat/completions', models:['deepseek-chat','deepseek-coder'], badgeClass:'badge-deepseek', icon:'fa-brain', needsKey:true },
-            dalle: { name:'DALL-E', endpoint:'https://api.openai.com/v1/images/generations', models:['dall-e-3','dall-e-2'], badgeClass:'badge-dalle', icon:'fa-paint-brush', isImage:true, needsKey:true },
-            theresav: { name:'Theresav AI', endpoint:'https://api.theresav.biz.id/ai/deepseek', models:['v3.2','v3','v2'], badgeClass:'badge-theresav', icon:'fa-bolt', isCustomGet:true, needsChatId:true, needsKey:true },
-            groq: { name:'Groq', endpoint:'https://api.groq.com/openai/v1/chat/completions', models:['llama-3.3-70b-versatile','llama-3.1-8b-instant','llama3-70b-8192','llama3-8b-8192','mixtral-8x7b-32768','gemma2-9b-it'], badgeClass:'badge-groq', icon:'fa-rocket', needsKey:true },
-            offline: { name:'Abil-Offline', endpoint:null, models:['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama-3.2-3B-Instruct-q4f16_1-MLC','gemma-2b-it-q4f16_1-MLC'], badgeClass:'badge-offline', icon:'fa-microchip', isOffline:true, needsKey:false }
+            openai: { name:'ChatGPT', endpoint:'https://api.openai.com/v1/chat/completions', models:['gpt-4o','gpt-4-turbo','gpt-4','gpt-3.5-turbo'], badgeClass:'badge-openai', icon:'fa-robot' },
+            gemini: { name:'Gemini', endpoint:'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent', models:['gemini-pro','gemini-pro-vision'], badgeClass:'badge-gemini', icon:'fa-gem' },
+            kimi: { name:'Kimi', endpoint:'https://api.moonshot.ai/v1/chat/completions', models:['moonshot-v1-8k','moonshot-v1-32k','moonshot-v1-128k'], badgeClass:'badge-kimi', icon:'fa-moon' },
+            deepseek: { name:'DeepSeek', endpoint:'https://api.deepseek.com/v1/chat/completions', models:['deepseek-chat','deepseek-coder'], badgeClass:'badge-deepseek', icon:'fa-brain' },
+            dalle: { name:'DALL-E', endpoint:'https://api.openai.com/v1/images/generations', models:['dall-e-3','dall-e-2'], badgeClass:'badge-dalle', icon:'fa-paint-brush', isImage:true, requiresVip:true },
+            theresav: { name:'Theresav AI', endpoint:'https://api.theresav.biz.id/ai/deepseek', models:['v3.2','v3','v2'], badgeClass:'badge-theresav', icon:'fa-bolt', isCustomGet:true, needsChatId:true, requiresVip:true },
+            groq: { name:'Groq', endpoint:'https://api.groq.com/openai/v1/chat/completions', models:['llama-3.3-70b-versatile','llama-3.1-8b-instant','llama3-70b-8192','llama3-8b-8192','mixtral-8x7b-32768','gemma2-9b-it'], badgeClass:'badge-groq', icon:'fa-rocket', requiresVip:true }
         };
-        let currentProvider = 'offline'; // Default ke offline
-        let config = { apiKeys:{}, chatId:'', temperature:0.7, maxTokens:2048 };
+        
+        let currentProvider = 'openai';
+        let config = { apiKeys:{}, chatId:'', customEndpoints:{}, customNames:{}, temperature:0.7, maxTokens:2048 };
         let chatHistory = [], chatSessions = [], currentSessionId = null;
 
         function loadConfig() {
             const saved = localStorage.getItem('abilai_config');
-            if (saved) { const p=JSON.parse(saved); config.apiKeys=p.apiKeys||{}; config.chatId=p.chatId||''; currentProvider=p.currentProvider||'offline'; }
-            const sess = localStorage.getItem('abilai_sessions');
-            if (sess) chatSessions = JSON.parse(sess);
-            applyConfigToUI();
-            renderChatList();
-            renderProviderDropdown();
+            if (saved) { const p = JSON.parse(saved); config.apiKeys = p.apiKeys || {}; config.chatId = p.chatId || ''; config.customEndpoints = p.customEndpoints || {}; config.customNames = p.customNames || {}; currentProvider = p.currentProvider || 'openai'; }
+            const sess = localStorage.getItem('abilai_sessions'); if (sess) chatSessions = JSON.parse(sess);
+            applyConfigToUI(); renderChatList(); renderProviderDropdown();
         }
+        
         function saveConfig() {
-            localStorage.setItem('abilai_config', JSON.stringify({ apiKeys:config.apiKeys, chatId:config.chatId, currentProvider }));
+            localStorage.setItem('abilai_config', JSON.stringify({ apiKeys: config.apiKeys, chatId: config.chatId, customEndpoints: config.customEndpoints, customNames: config.customNames, currentProvider }));
             localStorage.setItem('abilai_sessions', JSON.stringify(chatSessions));
         }
+        
         function saveCurrentSession() {
             if (!currentSessionId) return;
             const idx = chatSessions.findIndex(s => s.id === currentSessionId);
-            const title = chatHistory.length > 0 ? chatHistory[0]?.content?.substring(0, 40) || 'Chat' : 'Chat Baru';
-            if (idx >= 0) {
-                chatSessions[idx].messages = [...chatHistory];
-                chatSessions[idx].title = title;
-                chatSessions[idx].date = new Date().toISOString();
-            }
-            saveConfig();
-            renderChatList();
+            const title = chatHistory.length > 0 ? chatHistory[0]?.content?.substring(0, 40) || 'lagi obrolan' : 'obrolan baru';
+            if (idx >= 0) { chatSessions[idx].messages = [...chatHistory]; chatSessions[idx].title = title; chatSessions[idx].date = new Date().toISOString(); }
+            saveConfig(); renderChatList();
         }
-
+        
         function applyConfigToUI() {
             const apiConfig = API_CONFIGS[currentProvider];
             if (document.getElementById('apiKeyInput')) {
                 document.getElementById('apiKeyInput').value = config.apiKeys[currentProvider] || '';
-                document.getElementById('apiEndpoint').value = apiConfig.endpoint || 'Browser Lokal (WebLLM)';
-                document.getElementById('providerLabel').textContent = `(${apiConfig.name})`;
+                document.getElementById('apiEndpoint').value = config.customEndpoints[currentProvider] || apiConfig.endpoint;
+                document.getElementById('providerLabel').textContent = `(${getDisplayName()})`;
                 document.getElementById('modelSelect').innerHTML = apiConfig.models.map(m => `<option value="${m}">${m}</option>`).join('');
                 document.getElementById('chatIdGroup').style.display = apiConfig.needsChatId ? 'block' : 'none';
                 if (apiConfig.needsChatId) document.getElementById('chatIdInput').value = config.chatId || '';
+                document.getElementById('customNameInput').value = config.customNames[currentProvider] || '';
             }
-            updateBadge();
+            updateBadge(); renderProviderDropdown();
         }
+        
+        function getDisplayName() { return config.customNames[currentProvider] || API_CONFIGS[currentProvider].name; }
         function updateBadge() {
-            const a=API_CONFIGS[currentProvider];
-            document.getElementById('providerBadge').className='provider-badge '+a.badgeClass;
-            document.getElementById('providerName').textContent=a.name;
+            const a = API_CONFIGS[currentProvider];
+            document.getElementById('providerBadge').className = 'provider-badge ' + a.badgeClass;
+            document.getElementById('providerName').textContent = getDisplayName();
             const iconEl = document.querySelector('#providerBadge i:first-child');
-            if (iconEl) iconEl.className = 'fas '+a.icon;
+            if (iconEl) iconEl.className = 'fas ' + a.icon;
         }
-
+        
+        function canUserAccessProvider(key) {
+            const provider = API_CONFIGS[key];
+            if (!provider.requiresVip) return true;
+            if (currentUser?.role === 'admin') return true;
+            return userHasVipAccess(currentUser?.email, key);
+        }
+        
         function renderProviderDropdown() {
-            const dropdown = document.getElementById('providerDropdown');
-            let html = '';
+            const dropdown = document.getElementById('providerDropdown'); let html = '';
             for (const [key, provider] of Object.entries(API_CONFIGS)) {
-                const hasKey = !provider.needsKey || config.apiKeys[key];
-                const icon = hasKey ? '✅' : '🔒';
-                html += `<div class="provider-option" onclick="selectProvider('${key}')">
-                    <i class="fas ${provider.icon}"></i> ${provider.name} <span style="font-size:0.6rem;">${provider.needsKey ? (hasKey ? '✅' : '🔒') : '🆓'}</span>
-                </div>`;
+                const hasAccess = canUserAccessProvider(key), hasKey = config.apiKeys[key], display = config.customNames[key] || provider.name;
+                html += `<div class="provider-option ${!hasAccess ? 'locked' : ''}" onclick="selectProvider('${key}')"><i class="fas ${provider.icon}"></i> ${escapeHtml(display)} <span style="font-size:0.6rem;">${provider.requiresVip ? (hasAccess ? '👑' : '🔒') : (hasKey ? '✅' : '🔒')}</span></div>`;
             }
             dropdown.innerHTML = html;
         }
-        function toggleProviderDropdown() {
-            const dropdown = document.getElementById('providerDropdown');
-            dropdown.classList.toggle('show');
-        }
+        
+        function toggleProviderDropdown() { document.getElementById('providerDropdown').classList.toggle('show'); }
         function selectProvider(key) {
-            const provider = API_CONFIGS[key];
-            if (provider.needsKey && !config.apiKeys[key]) {
-                showToast('⚠️ API Key belum diatur untuk provider ini. Hubungi admin atau pilih Abil-Offline (gratis).');
-                document.getElementById('providerDropdown').classList.remove('show');
-                return;
-            }
-            currentProvider = key;
-            if (provider.isOffline) {
-                // Tidak perlu API key
-                saveConfig();
-                applyConfigToUI();
-                renderProviderDropdown();
-                document.getElementById('providerDropdown').classList.remove('show');
-                showToast(`Provider diubah ke ${provider.name} (Gratis, Tanpa API Key)`);
-            } else {
-                saveConfig();
-                applyConfigToUI();
-                renderProviderDropdown();
-                document.getElementById('providerDropdown').classList.remove('show');
-                showToast(`Provider diubah ke ${provider.name}`);
-            }
+            if (!canUserAccessProvider(key)) { showToast('🔒 Anda tidak memiliki akses VIP ke provider ini.'); document.getElementById('providerDropdown').classList.remove('show'); return; }
+            if (!config.apiKeys[key]) { showToast('⚠️ API Key belum diatur. Hubungi admin.'); document.getElementById('providerDropdown').classList.remove('show'); return; }
+            currentProvider = key; saveConfig(); applyConfigToUI();
+            document.getElementById('providerDropdown').classList.remove('show');
+            showToast(`Provider diubah ke ${getDisplayName()}`);
         }
-
+        
         document.addEventListener('click', function(e) {
-            const badge = document.getElementById('providerBadge');
-            const dropdown = document.getElementById('providerDropdown');
-            if (badge && dropdown && !badge.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.classList.remove('show');
-            }
+            const badge = document.getElementById('providerBadge'), dropdown = document.getElementById('providerDropdown');
+            if (badge && dropdown && !badge.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.remove('show');
         });
-
+        
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('open'); }
         function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
         function renderChatList() {
             const list = document.getElementById('chatList');
             if (chatSessions.length === 0) { list.innerHTML = '<div style="text-align:center;padding:20px;color:#6b7280;font-size:0.8rem;"><i class="fas fa-inbox mb-2" style="font-size:1.5rem;display:block;"></i>Belum ada riwayat</div>'; return; }
-            list.innerHTML = chatSessions.slice().reverse().map(s => `
-                <div class="chat-list-item ${s.id === currentSessionId ? 'active' : ''}" onclick="loadSession('${s.id}')">
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.title || 'Chat')}</span>
-                    <button class="delete-chat" onclick="event.stopPropagation();deleteSession('${s.id}')"><i class="fas fa-trash-alt"></i></button>
-                </div>`).join('');
+            list.innerHTML = chatSessions.slice().reverse().map(s => `<div class="chat-list-item ${s.id === currentSessionId ? 'active' : ''}" onclick="loadSession('${s.id}')"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.title || 'Chat')}</span><button class="delete-chat" onclick="event.stopPropagation();deleteSession('${s.id}')"><i class="fas fa-trash-alt"></i></button></div>`).join('');
         }
+        
         function loadSession(id) { saveCurrentSession(); const s = chatSessions.find(s => s.id === id); if (s) { chatHistory = s.messages || []; currentSessionId = s.id; renderChatMessages(); closeSidebar(); } }
         function deleteSession(id) { if (confirm('Hapus chat ini?')) { chatSessions = chatSessions.filter(s => s.id !== id); if (currentSessionId === id) newChat(); saveConfig(); renderChatList(); showToast('Chat dihapus'); } }
-        function renderChatMessages() { const c=document.getElementById('messagesContainer'); if (chatHistory.length===0) { newChat(); return; } c.innerHTML=''; chatHistory.forEach(m=>{ if(m.role==='user')addMessageElement('user',m.content); else addMessageElement('ai',m.content); }); scrollToBottom(); }
+        function renderChatMessages() { const c = document.getElementById('messagesContainer'); if (chatHistory.length === 0) { newChat(); return; } c.innerHTML = ''; chatHistory.forEach(m => { if (m.role === 'user') addMessageElement('user', m.content); else addMessageElement('ai', m.content); }); scrollToBottom(); }
         function openSettingsModal() { if (currentUser?.role !== 'admin') { showToast('Hanya admin yang bisa mengakses pengaturan API'); return; } document.getElementById('settingsModal').classList.add('active'); loadConfig(); applyConfigToUI(); }
         function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('active'); }
         function closeSettingsOutside(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
         function switchProviderTab(p) { currentProvider = p; applyConfigToUI(); }
-        function toggleApiKeyVisibility() { const i=document.getElementById('apiKeyInput'), ic=document.getElementById('eyeIcon'); if(i.type==='password'){i.type='text';ic.classList.replace('fa-eye','fa-eye-slash');} else {i.type='password';ic.classList.replace('fa-eye-slash','fa-eye');} }
+        function toggleApiKeyVisibility() { const i = document.getElementById('apiKeyInput'), ic = document.getElementById('eyeIcon'); i.type === 'password' ? (i.type = 'text', ic.classList.replace('fa-eye', 'fa-eye-slash')) : (i.type = 'password', ic.classList.replace('fa-eye-slash', 'fa-eye')); }
         function saveSettings() {
             config.apiKeys[currentProvider] = document.getElementById('apiKeyInput').value.trim();
             config.chatId = document.getElementById('chatIdInput')?.value?.trim() || '';
+            const newEndpoint = document.getElementById('apiEndpoint').value.trim();
+            if (newEndpoint && newEndpoint !== API_CONFIGS[currentProvider].endpoint) config.customEndpoints[currentProvider] = newEndpoint;
+            else delete config.customEndpoints[currentProvider];
+            const customName = document.getElementById('customNameInput').value.trim();
+            if (customName && customName !== API_CONFIGS[currentProvider].name) config.customNames[currentProvider] = customName;
+            else delete config.customNames[currentProvider];
             saveConfig();
             document.getElementById('settingsStatus').textContent = '✅ Tersimpan!'; document.getElementById('settingsStatus').style.color = '#22c55e';
-            updateBadge(); setTimeout(()=>{ document.getElementById('settingsStatus').textContent=''; },3000);
-            showToast(`Pengaturan ${API_CONFIGS[currentProvider].name} disimpan! 🔑`);
+            updateBadge(); renderProviderDropdown();
+            setTimeout(() => { document.getElementById('settingsStatus').textContent = ''; }, 3000);
+            showToast(`Pengaturan ${getDisplayName()} disimpan! 🔑`);
         }
+        
         function newChat() {
-            saveCurrentSession(); chatHistory = []; currentSessionId = 'sess_'+Date.now();
-            chatSessions.push({ id: currentSessionId, title: 'Chat Baru', messages: [], date: new Date().toISOString() });
+            saveCurrentSession(); chatHistory = []; currentSessionId = 'sess_' + Date.now();
+            chatSessions.push({ id: currentSessionId, title: 'lagi obrolan', messages: [], date: new Date().toISOString() });
             saveConfig();
             document.getElementById('messagesContainer').innerHTML = `<div class="animate-fade-in text-center mb-4 mt-8"><p class="text-gray-500 text-xs mb-3">💡 Coba tanyakan:</p><div class="flex flex-wrap justify-center gap-2"><span class="suggestion-chip" onclick="askSuggestion('Halo! Siapa kamu?')">🤖 Siapa Kamu?</span><span class="suggestion-chip" onclick="askSuggestion('Jelaskan tentang AI')">🧠 Jelaskan AI</span><span class="suggestion-chip" onclick="askSuggestion('Buatkan kalkulator')">💻 Kalkulator</span><span class="suggestion-chip" onclick="askSuggestion('Tips coding')">🎯 Tips Coding</span></div></div>`;
             renderChatList(); document.getElementById('userInput').focus();
         }
+        
         function askSuggestion(t) { document.getElementById('userInput').value = t; sendMessage(); }
-        function handleKeyDown(e) { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); sendMessage(); } }
+        function handleKeyDown(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
         async function sendMessage() {
             const input = document.getElementById('userInput'), message = input.value.trim();
             if (!message) return;
-            const provider = API_CONFIGS[currentProvider];
-            
-            // Cek API key hanya untuk provider yang butuh
-            if (provider.needsKey && !config.apiKeys[currentProvider]) {
-                showToast('⚠️ API Key belum diatur. Pilih Abil-Offline untuk AI gratis tanpa API key.');
-                return;
-            }
-            if (provider.needsChatId && !config.chatId) { showToast('⚠️ Chat ID belum diatur!'); return; }
-            
+            if (!config.apiKeys[currentProvider]) { showToast('⚠️ API Key belum diatur. Hubungi admin.'); return; }
+            if (API_CONFIGS[currentProvider].needsChatId && !config.chatId) { showToast('⚠️ Chat ID belum diatur!'); return; }
             input.value = ''; input.style.height = 'auto';
-            addMessage('user', message);
-            const lid = addLoadingMessage();
-            
+            addMessage('user', message); const lid = addLoadingMessage();
             try {
-                let r;
-                if (provider.isOffline) {
-                    r = await getOfflineResponse(message);
-                } else if (provider.isCustomGet) {
-                    r = await getTheresavResponse(message);
-                } else if (provider.isImage) {
-                    r = await getDALLEResponse(message);
-                } else if (currentProvider === 'gemini') {
-                    r = await getGeminiResponse(message);
-                } else {
-                    r = await getStandardResponse(message);
-                }
+                const a = API_CONFIGS[currentProvider]; let r;
+                if (a.isCustomGet) r = await getTheresavResponse(message);
+                else if (a.isImage) r = await getDALLEResponse(message);
+                else if (currentProvider === 'gemini') r = await getGeminiResponse(message);
+                else r = await getStandardResponse(message);
                 removeLoadingMessage(lid); addMessage('ai', r);
                 saveCurrentSession(); renderChatList();
-            } catch(e) {
-                removeLoadingMessage(lid);
-                addMessage('ai', `❌ **Error:** ${e.message}`);
-            }
+            } catch (e) { removeLoadingMessage(lid); addMessage('ai', `Gagal Merespon...`); }
             scrollToBottom();
         }
-
-        // ===== OFFLINE AI (WebLLM) =====
-        async function getOfflineResponse(message) {
-            // Panggil fungsi dari module WebLLM
-            if (typeof window.getWebLLMResponse !== 'function') {
-                throw new Error('WebLLM belum siap. Tunggu beberapa saat dan coba lagi.');
-            }
-            return await window.getWebLLMResponse(message, SYSTEM_PROMPT);
+        
+        function copyCode(block) {
+            const code = block.textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('Kode disalin! 📋');
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('Kode disalin! 📋');
+            });
         }
-
-        function addMessage(type, content) { addMessageElement(type, content); chatHistory.push({ role: type==='user'?'user':'assistant', content }); }
+        
+        function addMessage(type, content) { addMessageElement(type, content); chatHistory.push({ role: type === 'user' ? 'user' : 'assistant', content }); }
         function addMessageElement(type, content) {
-            const container = document.getElementById('messagesContainer');
-            const div = document.createElement('div');
+            const container = document.getElementById('messagesContainer'), div = document.createElement('div');
             div.className = type === 'user' ? 'animate-slide-in-right' : 'animate-slide-in-left';
             const isU = type === 'user';
-            div.innerHTML = `<div class="flex items-start gap-3 ${isU?'justify-end':''}">
-                ${!isU?'<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0"><span class="text-white font-extrabold text-sm">A</span></div>':''}
-                <div class="${isU?'message-user':'message-ai'} relative">${isU?escapeHtml(content):renderMarkdown(content)}</div>
-                ${isU?'<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0"><i class="fas fa-user text-white text-xs"></i></div>':''}
-            </div>`;
+            div.innerHTML = `<div class="flex items-start gap-3 ${isU ? 'justify-end' : ''}">${!isU ? '<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0"><span class="text-white font-extrabold text-sm">A</span></div>' : ''}<div class="${isU ? 'message-user' : 'message-ai'} relative">${isU ? escapeHtml(content) : renderMarkdown(content)}</div>${isU ? '<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0"><i class="fas fa-user text-white text-xs"></i></div>' : ''}</div>`;
             container.appendChild(div);
-            if (!isU) { div.querySelectorAll('pre code').forEach(b => { hljs.highlightElement(b); const p=b.parentElement; p.style.position='relative'; const btn=document.createElement('button'); btn.className='copy-btn'; btn.innerHTML='<i class="fas fa-copy"></i> Copy'; btn.onclick=()=>copyCode(b); p.appendChild(btn); }); }
+            if (!isU) { div.querySelectorAll('pre code').forEach(b => { hljs.highlightElement(b); const p = b.parentElement; p.style.position = 'relative'; const btn = document.createElement('button'); btn.className = 'copy-btn'; btn.innerHTML = '<i class="fas fa-copy"></i> Copy'; btn.onclick = () => copyCode(b); p.appendChild(btn); }); }
         }
+        
         function addLoadingMessage() {
-            const container = document.getElementById('messagesContainer'), id = 'loading-'+Date.now();
-            const div = document.createElement('div'); div.id = id; div.className = 'animate-fade-in';
-            const providerName = API_CONFIGS[currentProvider].name;
-            div.innerHTML = `<div class="flex items-start gap-3"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0"><span class="text-white font-extrabold text-sm">A</span></div><div class="message-ai"><p class="text-gray-500 text-xs mb-2">Memproses dengan ${providerName}...</p><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div></div>`;
+            const container = document.getElementById('messagesContainer'), id = 'loading-' + Date.now(), div = document.createElement('div');
+            div.id = id; div.className = 'animate-fade-in';
+            div.innerHTML = `<div class="flex items-start gap-3"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0"><span class="text-white font-extrabold text-sm">A</span></div><div class="message-ai"><p class="text-gray-500 text-xs mb-2">Memproses...</p><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div></div>`;
             container.appendChild(div); scrollToBottom(); return id;
         }
+        
         function removeLoadingMessage(id) { const e = document.getElementById(id); if (e) e.remove(); }
-        function renderMarkdown(c) { marked.setOptions({ breaks:true, gfm:true }); return marked.parse(c); }
+        function renderMarkdown(c) { marked.setOptions({ breaks: true, gfm: true }); return marked.parse(c); }
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-        function copyCode(b) { navigator.clipboard.writeText(b.textContent).then(()=>showToast('Disalin! 📋')).catch(()=>showToast('Gagal')); }
-        function scrollToBottom() { const c=document.getElementById('chatContainer'); setTimeout(()=>{ c.scrollTop=c.scrollHeight; },100); }
+        
+        function scrollToBottom() { const c = document.getElementById('chatContainer'); setTimeout(() => { c.scrollTop = c.scrollHeight; }, 100); }
+        function getActiveEndpoint() { return config.customEndpoints[currentProvider] || API_CONFIGS[currentProvider].endpoint; }
+
         async function getStandardResponse(message) {
-            const apiConfig = API_CONFIGS[currentProvider];
-            const body = { model: document.getElementById('modelSelect').value, messages: [{ role:'system', content:SYSTEM_PROMPT }, ...chatHistory, { role:'user', content:message }], temperature: config.temperature, max_tokens: config.maxTokens };
-            const res = await fetch(apiConfig.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${config.apiKeys[currentProvider]}` }, body:JSON.stringify(body) });
-            if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+            const activeEndpoint = getActiveEndpoint();
+            const body = { model: document.getElementById('modelSelect').value, messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory, { role: 'user', content: message }], temperature: config.temperature, max_tokens: config.maxTokens };
+            const res = await fetch(activeEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.apiKeys[currentProvider]}` }, body: JSON.stringify(body) });
+            if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
             return (await res.json()).choices[0].message.content;
         }
+        
         async function getGeminiResponse(message) {
-            const apiConfig = API_CONFIGS[currentProvider];
-            const body = { contents:[{ role:'user', parts:[{ text:`${SYSTEM_PROMPT}\n\n${message}` }] }], generationConfig:{ temperature:config.temperature, maxOutputTokens:config.maxTokens } };
-            const res = await fetch(`${apiConfig.endpoint}?key=${config.apiKeys[currentProvider]}`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) });
-            if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+            const activeEndpoint = getActiveEndpoint();
+            const body = { contents: [{ role: 'user', parts: [{ text: `${SYSTEM_PROMPT}\n\n${message}` }] }], generationConfig: { temperature: config.temperature, maxOutputTokens: config.maxTokens } };
+            const res = await fetch(`${activeEndpoint}?key=${config.apiKeys[currentProvider]}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
             return (await res.json()).candidates[0].content.parts[0].text;
         }
+        
         async function getDALLEResponse(message) {
-            const body = { model:document.getElementById('modelSelect').value, prompt:message, n:1, size:'1024x1024' };
-            const res = await fetch('https://api.openai.com/v1/images/generations', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${config.apiKeys[currentProvider]}` }, body:JSON.stringify(body) });
-            if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${res.status}`); }
-            return `🎨 **Gambar dibuat!**\n\n> "${message}"\n\n![Image](${(await res.json()).data[0].url})`;
+            const body = { model: document.getElementById('modelSelect').value, prompt: message, n: 1, size: '1024x1024' };
+            const res = await fetch('https://api.openai.com/v1/images/generations', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.apiKeys[currentProvider]}` }, body: JSON.stringify(body) });
+            if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+            return `🎨 Gambar dibuat!\n\n> "${message}"\n\n![Image](${(await res.json()).data[0].url})`;
         }
+        
         async function getTheresavResponse(message) {
             const apiConfig = API_CONFIGS[currentProvider];
             const shortText = `[Abil-AI]: ${message}`;
             const url = `${apiConfig.endpoint}?text=${encodeURIComponent(shortText)}&model=${document.getElementById('modelSelect').value}&chatId=${config.chatId}&apikey=${config.apiKeys[currentProvider]}`;
-            const res = await fetch(url, { method:'GET' });
+            const res = await fetch(url, { method: 'GET' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (!data.status) throw new Error('API error');
             return data.result || 'Tidak ada respons.';
         }
-        function showToast(msg) { const o=document.querySelector('.toast'); if(o)o.remove(); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); },3000); }
+        
+        function showToast(msg) { const o = document.querySelector('.toast'); if (o) o.remove(); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3000); }
 
         document.addEventListener('DOMContentLoaded', () => {
             initUsers();
@@ -651,8 +551,9 @@
             if (!currentSessionId) newChat();
             document.getElementById('userInput').focus();
             const ta = document.getElementById('userInput');
-            ta.addEventListener('input', ()=>{ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,200)+'px'; });
+            ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 200) + 'px'; });
         });
+        
     </script>
 </body>
 </html>
