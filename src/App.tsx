@@ -329,41 +329,6 @@ export default function App() {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Google sign in states
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState('');
-  const [googleAuthError, setGoogleAuthError] = useState<string | null>(null);
-  const [googleLoading, setGoogleLoading] = useState(false);
-
-  const handleGoogleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!googleEmail || !googleEmail.includes('@')) {
-      setGoogleAuthError('Masukkan alamat Email Google yang valid.');
-      return;
-    }
-    setGoogleLoading(true);
-    setGoogleAuthError(null);
-    try {
-      const res = await fetch('/api/auth/google-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: googleEmail })
-      });
-      const data = await res.json();
-      if (data.success && data.token) {
-        setToken(data.token);
-        setShowGoogleModal(false);
-        setGoogleEmail('');
-      } else {
-        setGoogleAuthError(data.message || 'Gagal masuk dengan Google.');
-      }
-    } catch (err) {
-      setGoogleAuthError('Koneksi server gagal.');
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
   // Chat/Session states
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -782,7 +747,7 @@ export default function App() {
               <Sparkles className="text-white h-7 w-7 animate-pulse" />
             </div>
             <h1 className="text-3xl font-extrabold text-white tracking-tight">ABIL-AI CLIENT</h1>
-            <p className="text-sm text-zinc-400 mt-1">Multi Model AI Cerdas</p>
+            <p className="text-sm text-zinc-400 mt-1">Multi Model AI Assiten Cerdas</p>
           </div>
 
           <div className="flex p-1 bg-zinc-950 rounded-xl mb-6 border border-zinc-850">
@@ -795,7 +760,7 @@ export default function App() {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              LOGIN AKUN
+              MASUK (LOGIN)
             </button>
             <button
               id="switch-register"
@@ -818,7 +783,7 @@ export default function App() {
               <input
                 type="email"
                 required
-                placeholder="Email"
+                placeholder="contoh: budi@gmail.com"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-4 py-3 text-zinc-100 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 transition duration-250 placeholder-zinc-650"
@@ -827,10 +792,10 @@ export default function App() {
 
             <div>
               <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5 input-label">
-                SANDI EMAIL
+                KATA SANDI
               </label>
               <input
-                type=""
+                type="password"
                 required
                 placeholder="••••••••"
                 value={passwordInput}
@@ -1136,36 +1101,7 @@ export default function App() {
               {/* Models Showcase Categorized */}
               <div className="space-y-8">
                 
-                {/* 1. Global standard AI Models */}
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#a1a1aa] mb-4 flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Pilihan Kecerdasan Buatan Umum (Global Models)
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="global-models-grid">
-                    {GLOBAL_MODELS?.map((m) => (
-                      <div
-                        key={m?.id}
-                        id={`card-model-${m?.id}`}
-                        onClick={() => m?.id && handleCreateChat(m.id)}
-                        className="group relative bg-[#131316]/75 border border-zinc-800 hover:border-zinc-700/80 p-5 rounded-2xl cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 flex flex-col justify-between"
-                      >
-                        <div>
-                          <p className="text-xs text-zinc-500 font-bold tracking-wide uppercase">{m?.dev}</p>
-                          <h4 className="text-base font-extrabold text-[#f4f4f5] mt-1 group-hover:text-purple-400 transition">{m?.name}</h4>
-                          <p className="text-xs text-zinc-400 mt-2 leading-relaxed">{m?.desc}</p>
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-zinc-800/40 flex justify-end">
-                          <span className="text-[10px] font-bold text-zinc-500 group-hover:text-zinc-350 transition flex items-center gap-1">
-                            Pilih model <ChevronRight size={12} />
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 2. Abil-Ai Free Ecosystem */}
+                {/* 1. Abil-Ai Free Ecosystem */}
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-widest text-[#a1a1aa] mb-4 flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
@@ -1196,7 +1132,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 3. Abil-Ai VIP Ecosystem */}
+                {/* 2. Abil-Ai VIP Ecosystem */}
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-widest text-[#a1a1aa] mb-4 flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
@@ -1228,33 +1164,48 @@ export default function App() {
                           <div className="absolute top-4 right-4 text-amber-500/80">
                             {hasAccess ? <Award size={16} /> : <Lock size={15} className="text-zinc-650" />}
                           </div>
-
                           <div>
-                            <span className="text-[9px] font-extrabold tracking-widest text-amber-400 uppercase bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md self-start">
-                              VIP PREMIUM
-                            </span>
-                            <h4 className="text-sm font-black text-zinc-100 mt-2">{m?.name}</h4>
-                            <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">{m?.desc}</p>
+                            <p className="text-[10px] text-zinc-500 font-bold tracking-wide uppercase">{m?.tier}</p>
+                            <h4 className="text-sm font-extrabold text-[#f4f4f5] mt-1 group-hover:text-purple-300 transition">{m?.name}</h4>
+                            <p className="text-xs text-zinc-400 mt-2 leading-relaxed">{m?.desc}</p>
                           </div>
-
-                          <div className="mt-4 pt-3 border-t border-zinc-800/40 flex justify-between items-center text-xs">
-                            {hasAccess ? (
-                              <span className="text-[10px] font-bold text-purple-400 group-hover:underline">
-                                Akses Terbuka ✓
-                              </span>
-                            ) : (
-                              <button 
-                                type="button" 
-                                id={`unlock-btn-${m.id.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
-                                className="text-[10px] font-semibold text-[#f87171] hover:underline cursor-pointer"
-                              >
-                                Butuh Akses VIP
-                              </button>
-                            )}
+                          <div className="mt-4 pt-4 border-t border-zinc-800/20 flex justify-end">
+                            <span className="text-[10px] font-bold text-zinc-500 group-hover:text-amber-400 transition flex items-center gap-1">
+                              {hasAccess ? 'Mulai Percakapan' : 'Butuh Akses VIP'} <ChevronRight size={12} />
+                            </span>
                           </div>
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* 3. Global standard AI Models */}
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#a1a1aa] mb-4 flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    Pilihan Kecerdasan Buatan Umum (Global Models)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="global-models-grid">
+                    {GLOBAL_MODELS?.map((m) => (
+                      <div
+                        key={m?.id}
+                        id={`card-model-${m?.id}`}
+                        onClick={() => m?.id && handleCreateChat(m.id)}
+                        className="group relative bg-[#131316]/75 border border-zinc-800 hover:border-zinc-700/80 p-5 rounded-2xl cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 flex flex-col justify-between"
+                      >
+                        <div>
+                          <p className="text-xs text-zinc-500 font-bold tracking-wide uppercase">{m?.dev}</p>
+                          <h4 className="text-base font-extrabold text-[#f4f4f5] mt-1 group-hover:text-purple-400 transition">{m?.name}</h4>
+                          <p className="text-xs text-zinc-400 mt-2 leading-relaxed">{m?.desc}</p>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-zinc-800/40 flex justify-end">
+                          <span className="text-[10px] font-bold text-zinc-500 group-hover:text-zinc-350 transition flex items-center gap-1">
+                            Pilih model <ChevronRight size={12} />
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -1557,7 +1508,7 @@ export default function App() {
                     <div className="space-y-2 text-xs">
                       {/* Email info with blue badge if VIP */}
                       <div className="flex justify-between items-center bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-850/40">
-                        <span className="text-zinc-500 font-medium">Email</span>
+                        <span className="text-zinc-500 font-medium">Alamat Email</span>
                         <span className="font-bold text-zinc-100 flex items-center gap-1.5 min-w-0">
                           <span className="truncate max-w-[180px]" title={currentUser.email}>{currentUser.email}</span>
                           {isVipUser() && (
