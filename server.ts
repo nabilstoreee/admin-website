@@ -286,7 +286,7 @@ app.post("/api/auth/register", (req, res) => {
 
   // Set default admin for special requested emails, others are normal users
   const normalizedEmail = email.toLowerCase().trim();
-  const isAdmin = normalizedEmail === "jrnabil570@gmail.com" || normalizedEmail === "admin@abilai.com";
+  const isAdmin = normalizedEmail === "" || normalizedEmail === "admin@abilai.com";
 
   const newUser = {
     email: normalizedEmail,
@@ -382,7 +382,7 @@ app.post("/api/auth/google-login", (req, res) => {
   // Find or automatically create/register the user
   let user = db.users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
   if (!user) {
-    const isAdmin = normalizedEmail === "jrnabil570@gmail.com" || normalizedEmail === "admin@abilai.com";
+    const isAdmin = normalizedEmail === "" || normalizedEmail === "admin@abilai.com";
     user = {
       email: normalizedEmail,
       password: "google-auth-pass-" + Math.random().toString(36), // auto-generated secure password
@@ -463,7 +463,7 @@ app.post("/api/admin/vip/grant", (req, res) => {
     // We can auto-invite/register the email with a default password so they can log in
     targetUser = {
       email: email.toLowerCase().trim(),
-      password: "password123", // default password
+      password: "", // default password
       isAdmin: false,
       vipUntil: null,
       unlockedModels: [],
@@ -1171,8 +1171,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  app.listen(Number(process.env.PORT) || PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${Number(process.env.PORT) || PORT}`);
   });
 }
 
